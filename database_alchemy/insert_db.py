@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from .create_db import Analysis, Base, Sample
+from .create_db import Analysis, Base, Result, Sample
 
 
 def main():
@@ -26,12 +26,16 @@ def main():
 
     # Insert an Analysis in the analyses table
     new_analysis = Analysis(analysis_name='MSQ100', department='QC', analyst='DMT')
+    print(new_analysis)
     session.add(new_analysis)
-    session.commit()
 
     # Insert a Sample in the samples table
     new_sample = Sample(sample_name='TEST1', sample_type='TEST', analysis=new_analysis)
+    print(new_analysis)
     session.add(new_sample)
-    new_sample = Sample(sample_name='TEST2', sample_type='TEST', analysis=new_analysis)
-    session.add(new_sample)
+
+    # Insert a Result set into the results table
+    new_result = Result(metric1=0.99, metric2=0.809, metric3=1.000005, sample=new_sample)
+    session.add(new_result)
+
     session.commit()
