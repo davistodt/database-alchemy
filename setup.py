@@ -11,7 +11,7 @@ setuptools.setup(
     description='Learning databases using sqlalchemy, sqlite3 and alembic for unknown reasons',
     long_description=open('README.md').read(),
 
-    packages=['database-alchemy'],
+    packages=['database_alchemy'],
 
     install_requires=[
         'click',
@@ -26,7 +26,7 @@ setuptools.setup(
     ],
     entry_points={
         'console_scripts': [
-           # 'create-db = database-alchemy.create_db:main',
+            'create-db = database_alchemy.create_db:main',
            # 'modify-db = database-alchemy.modify_db:main',
         ],
     },
