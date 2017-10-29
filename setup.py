@@ -27,7 +27,7 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'create-db = database_alchemy.create_db:main',
-           # 'modify-db = database-alchemy.modify_db:main',
+            'insert-db = database_alchemy.insert_db:main',
         ],
     },
 )
