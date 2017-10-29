@@ -1,31 +1,35 @@
-import os
-import sys
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
  
 Base = declarative_base()
 
 
-class Person(Base):
-    __tablename__ = 'person'
-    # Here we define columns for the table person
+class Analysis(Base):
+    __tablename__ = 'analyses'
+    # Here we define columns for the table analyses
     # Notice that each column is also a normal Python instance attribute.
-    id = Column(Integer, primary_key=True)
-    name = Column(String(250), nullable=False)
+    analysis_id = Column(Integer, primary_key=True)
+    analysis_name = Column(String(20), nullable=False)
+    date = Column(DateTime, default=func.now())
+    department = Column(String(20))
+    analyst = Column(String)
+    samples = relationship("Sample", back_populates="analysis")
 
 
-class Address(Base):
-    __tablename__ = 'address'
-    # Here we define columns for the table address.
+class Sample(Base):
+    __tablename__ = 'samples'
+    # Here we define columns for the table samples.
     # Notice that each column is also a normal Python instance attribute.
-    id = Column(Integer, primary_key=True)
-    street_name = Column(String(250))
-    street_number = Column(String(250))
-    post_code = Column(String(250), nullable=False)
-    person_id = Column(Integer, ForeignKey('person.id'))
-    person = relationship(Person)
+    sample_id = Column(Integer, primary_key=True)
+    sample_name = Column(String(20), nullable=False)
+    sample_type = Column(String)
+    analysis_id = Column(Integer, ForeignKey('analyses.analysis_id'))
+    analysis = relationship("Analysis", back_populates="samples")
+
 
 
 def main():
