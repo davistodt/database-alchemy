@@ -1,7 +1,7 @@
 import click
-import pandas as pd
 from sqlalchemy import Column, ForeignKey, create_engine
-from sqlalchemy import Integer, String, DateTime, Float, func, Boolean
+from sqlalchemy import Integer, String, DateTime, func
+from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -43,62 +43,62 @@ class Sample(Base):
                f"'{self.sample_type}')"
 
 
-def get_data_types(csv_path):
-    '''Generates a list of tuples containing (metric_name, SQLAlchemy Type)
-     from a csv file.
+class Result(Base):
+    __tablename__ = 'results'
 
-    Args:
-        csv_path (Union[str, Path]): path to the csv file
+    # Here we define columns for the table results
+    result_id = Column(Integer, primary_key=True)
+    sample_id = Column(Integer, ForeignKey('samples.sample_id'))
+    metrics = Column(JSON)
+    sample = relationship("Sample", back_populates="results")
 
-    Returns (List[Tuple[str, Class]]): list of (metric name, type)
-     compatible with DB models
-    '''
-    metrics = pd.read_csv(csv_path).T
-    metrics = metrics.itertuples()
-    allowed_types = {'Boolean': Boolean, 'Float': Float, 'Integer': Integer,
-                     'String': String}
 
-    # replaces string representation of type with
-    # the true SQLAlchemy type, using allowed_types
-    data_types = [(metric[0], allowed_types[metric[1]])
-                  if metric[1] in allowed_types.keys()
-                  else (metric[0], String) for metric in metrics]
-
-    return data_types
+    def __repr__(self):
+        return f"Result('{self.result_id}', '{self.sample_id}', '{self.metrics}'"
 
 
 @click.command()
 @click.argument('db_name')
-@click.argument('metrics_declaration_csv')
-def main(db_name, metrics_declaration_csv):
-    '''Create a new project database.
+@click.option('-a', '--ip-address', default='127.0.0.1', show_default=True,
+              help='the ip address of the postgresql server to bind to.')
+@click.option('-p', '--port', default='5432', show_default=True,
+              help='the port of the postgresql server to bind to.')
+def main(db_name, ip_address, port):
+    '''Set up a project database for tracking analyses, samples, and results.
 
-    DB_NAME should be the name of the project (database) to be created,
-    followed by '.sqlite'. For example: 'projectX.sqlite'.
-
-    METRICS_DECLARATION_CSV should be a csv file containing the names and
-    Python types of each of the metrics to be included as fields in the
-    Results table. It should have the following structure:
+    The database schema applied to the database is generic in the sense that
+    it should be suitable for most projects. The schema is the following:
 
     \b
-      metric1,metric2,metric3
-      Float,Float,Integer
+      Table\tField\t\tType
+      ---------+---------------+--------------
+      Analyses:\tanalysis_id\t(Integer, PK)
+               \tanalysis_name\t(String)
+               \tdate\t\t(DateTime)
+               \tdepartment\t(String)
+               \tanalyst\t\t(String)
+    \b
+      Table\tField\t\tType
+      ---------+---------------+--------------
+      Samples:\tsample_id\t(Integer, PK)
+              \tanalysis_id\t(Integer, FK)
+              \tsample_name\t(String)
+              \tsample_type\t(DateTime)
+    \b
+      Table\tField\t\tType
+      ---------+---------------+--------------
+      Results:\tresult_id\t(Integer, PK)
+              \tsample_id\t(Integer, FK)
+              \tmetrics\t\t(JSON)
 
-    The following is a list of accepted data types: {Boolean, Float, Integer, String}
+    DB_NAME should be the name of a blank database which has already been created
+    prior to running this script. To create a database, execute the following,
+    where {project_x} refers to the name of the project/database:
+
+    \b
+      $ initdb Databases
+      $ pg_ctl -D Databases -l logfile start
+      $ createdb {projectx}
     '''
-    engine = create_engine(f'sqlite:///{db_name}', echo=True)
-    data_types = get_data_types(metrics_declaration_csv)
-
-    attr_dict = {'__tablename__': 'results',
-                 'result_id': Column(Integer, primary_key=True),
-                 'sample_name': Column(String, ForeignKey('samples.sample_name')),
-                 'sample': relationship("Sample", back_populates="results")}
-
-    for metric_name, metric_type in data_types:
-        attr_dict[metric_name] = Column(metric_type)
-
-    # creates a new class 'Results' which inherits from
-    # Base and has the attributes in attr_dict
-    Result = type('Result', (Base,), attr_dict)
-
+    engine = create_engine(f'postgresql://{ip_address}:{port}/{db_name}')
     Base.metadata.create_all(engine)
