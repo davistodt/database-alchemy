@@ -1,11 +1,13 @@
+import click
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .create_db import Analysis, Base, Result, Sample
 
 
-def main():
-    db_name = 'sqlalchemy_example.db'
+@click.command()
+@click.argument('db_name')
+def main(db_name):
     engine = create_engine(f'sqlite:///{db_name}')
     # Bind the engine to the metadata of the Base class so that the
     # declaratives can be accessed through a Session instance
@@ -26,16 +28,13 @@ def main():
 
     # Insert an Analysis in the analyses table
     new_analysis = Analysis(analysis_name='MSQ100', department='QC', analyst='DMT')
-    print(new_analysis)
     session.add(new_analysis)
 
     # Insert a Sample in the samples table
     new_sample = Sample(sample_name='TEST1', sample_type='TEST', analysis=new_analysis)
-    print(new_analysis)
     session.add(new_sample)
 
-    # Insert a Result set into the results table
-    new_result = Result(metric1=0.99, metric2=0.809, metric3=1.000005, sample=new_sample)
+    new_result = Result(metric2=0.809, metric3=1.000005, sample=new_sample)
     session.add(new_result)
 
     session.commit()
