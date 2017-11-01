@@ -2,20 +2,58 @@ import click
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from .create_db import Analysis, Base, Result, Sample
+from .db_create import Analysis, Base, Result, Sample
 
 
 @click.command()
+@click.argument('metadata_json')
+@click.argument('results_csv')
 @click.argument('db_name')
 @click.option('-a', '--ip-address', default='127.0.0.1', show_default=True,
               help='the ip address of the postgresql server to bind to.')
 @click.option('-p', '--port', default='5432', show_default=True,
               help='the port of the postgresql server to bind to.')
 def main(db_name, ip_address, port):
-    '''Perform bulk CRUD operations on the database in the project context.
+    '''Insert new project data into an existing database by supplying a results
+    csv file and an accompanying metadata json file describing the analysis.
 
-    So far, this script is only able to perform a hardcoded set of operations
-    to demonstrate that the insert operation is successful. This will be expanded on.
+    The METADATA_JSON file has a fixed structure. It must be valid json
+    containing the top-level fields {'Analysis', 'Samples'}. The Analysis block
+    must be a mapping of analysis-level metadata. The Samples block must be an
+    array of mappings of sample-level metadata. The schema is the following:
+
+    \b
+      {
+        "Analysis": {
+          "analysis_name": "Troubleshoot drop out rates",
+          "date": "2017-09-20",
+          "department": "IT",
+          "analyst": "Guido van Rossum"
+        },
+        "Samples": [
+          {
+            "sample_name": "sample01",
+            "sample_type": "Reference",
+            "sample_description": "NA"
+          },
+          {
+            "sample_name": "sample02",
+            "sample_type": "Test",
+            "sample_description": "NA"
+          }
+        ]
+      }
+
+    The RESULTS_CSV file must contain a column corresponding to the sample names
+    in the JSON file, followed by a column for each metric. The format is the
+    following:
+
+    \b
+      sample_name\t{metric_1}\t{metric_2}\t{metric_3}\t.
+      ----------------+---------------+---------------+---------------+-----
+      sample01\t\t0.6\t\t45\t\t1500\t\t.
+      sample02\t\t0.9\t\t12\t\t3000\t\t.
+
     '''
     engine = create_engine(f'postgresql://{ip_address}:{port}/{db_name}')
     # Bind the engine to the metadata of the Base class so that the

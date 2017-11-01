@@ -1,7 +1,7 @@
 import click
 from sqlalchemy import Column, ForeignKey, create_engine
 from sqlalchemy import Integer, String, DateTime, func
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -13,7 +13,7 @@ class Analysis(Base):
 
     # Declaration of columns for the table analyses
     analysis_id = Column(Integer, primary_key=True)
-    analysis_name = Column(String(20), nullable=False)
+    analysis_name = Column(String(50), nullable=False)
     date = Column(DateTime, default=func.now())
     department = Column(String(20))
     analyst = Column(String)
@@ -31,8 +31,9 @@ class Sample(Base):
 
     # Declaration of columns for the table samples.
     sample_id = Column(Integer, primary_key=True)
-    sample_name = Column(String(20), nullable=False)
+    sample_name = Column(String(30), nullable=False)
     sample_type = Column(String)
+    sample_description = Column(String(50))
     analysis_id = Column(Integer, ForeignKey('analyses.analysis_id'))
     analysis = relationship("Analysis", back_populates="samples")
     results = relationship("Result", back_populates="sample")
@@ -49,7 +50,7 @@ class Result(Base):
     # Here we define columns for the table results
     result_id = Column(Integer, primary_key=True)
     sample_id = Column(Integer, ForeignKey('samples.sample_id'))
-    metrics = Column(JSON)
+    metrics = Column(JSONB)
     sample = relationship("Sample", back_populates="results")
 
 
@@ -83,7 +84,8 @@ def main(db_name, ip_address, port):
       Samples:\tsample_id\t(Integer, PK)
               \tanalysis_id\t(Integer, FK)
               \tsample_name\t(String)
-              \tsample_type\t(DateTime)
+              \tsample_type\t(String)
+              \tsample_description\t(String)
     \b
       Table\tField\t\tType
       ---------+---------------+--------------
