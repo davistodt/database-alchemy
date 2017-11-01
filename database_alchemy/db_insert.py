@@ -1,4 +1,5 @@
 import click
+import json
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -13,7 +14,7 @@ from .db_create import Analysis, Base, Result, Sample
               help='the ip address of the postgresql server to bind to.')
 @click.option('-p', '--port', default='5432', show_default=True,
               help='the port of the postgresql server to bind to.')
-def main(db_name, ip_address, port):
+def main(metadata_json, results_csv, db_name, ip_address, port):
     '''Insert new project data into an existing database by supplying a results
     csv file and an accompanying metadata json file describing the analysis.
 
@@ -59,25 +60,49 @@ def main(db_name, ip_address, port):
     # Bind the engine to the metadata of the Base class so that the
     # declaratives can be accessed through a Session instance
     Base.metadata.bind = engine
-
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    # Insert an analysis in the analyses table
-    new_analysis = Analysis(analysis_name='MSQ100', department='QC', analyst='DMT')
-    session.add(new_analysis)
+    with open(metadata_json) as of:
+        json_data = json.load(of)
 
-    # Insert two samples in the samples table
-    sample_1 = Sample(sample_name='TEST1', sample_type='TEST', analysis=new_analysis)
-    sample_2 = Sample(sample_name='REF1', sample_type='REFERENCE', analysis=new_analysis)
-    session.add(sample_1, sample_2)
+    analysis_data = {}
+    for field in ['analysis_name', 'date', 'department', 'analyst']:
+        if field in json_data['Analysis']:
+            analysis_data[field] = json_data['Analysis'][field]
+        else:
+            # log warning
+            pass
+    analysis = Analysis(**analysis_data)
+    session.add(analysis)
 
-    # Insert two result sets, one for each sample
-    metrics_1 = {'first_name': 'Guido', 'second_name': 'Rossum', 'titles': ['BDFL', 'Developer']}
-    metrics_2 = {'first_name': 'Davis', 'second_name': 'Todt', 'titles': ['MR', 'Developer']}
+    for sample in json_data['Samples']:
+        sample_data = {}
+        for field in ['sample_name', 'sample_type', 'sample_description']:
+            if field in sample:
+                sample_data[field] = sample[field]
+            else:
+                # log warning
+                pass
+        sample_data['analysis'] = analysis  # required for setting up relationship between analysis, sample
+        sample = Sample(**sample_data)
+        session.add(sample)
 
-    result_1 = Result(metrics=metrics_1, sample=sample_1)
-    result_2 = Result(metrics=metrics_2, sample=sample_2)
-    session.add(result_1, result_2)
+    # # Insert an analysis in the analyses table
+    # new_analysis = Analysis(analysis_name='MSQ100', department='QC', analyst='DMT')
+    # session.add(new_analysis)
+    #
+    # # Insert two samples in the samples table
+    # sample_1 = Sample(sample_name='TEST1', sample_type='TEST', analysis=new_analysis)
+    # sample_2 = Sample(sample_name='REF1', sample_type='REFERENCE', analysis=new_analysis)
+    # session.add(sample_1, sample_2)
+    #
+    # # Insert two result sets, one for each sample
+    # metrics_1 = {'first_name': 'Guido', 'second_name': 'Rossum', 'titles': ['BDFL', 'Developer']}
+    # metrics_2 = {'first_name': 'Davis', 'second_name': 'Todt', 'titles': ['MR', 'Developer']}
+    #
+    # result_1 = Result(metrics=metrics_1, sample=sample_1)
+    # result_2 = Result(metrics=metrics_2, sample=sample_2)
+    # session.add(result_1, result_2)
 
     session.commit()

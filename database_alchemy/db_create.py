@@ -15,15 +15,14 @@ class Analysis(Base):
     analysis_id = Column(Integer, primary_key=True)
     analysis_name = Column(String(50), nullable=False)
     date = Column(DateTime, default=func.now())
-    department = Column(String(20))
-    analyst = Column(String)
+    department = Column(String(20), nullable=False)
+    analyst = Column(String, nullable=False)
     samples = relationship("Sample", back_populates="analysis")
 
 
     def __repr__(self):
-        return f"Analysis('{self.analysis_id}', {self.analysis_name}', " \
-               f"'{self.date}', '{self.department}', '{self.analyst}, " \
-               f"'{self.samples}')"
+        return f"Analysis('{self.analysis_name}', '{self.date}', " \
+               f"'{self.department}', '{self.analyst}')"
 
 
 class Sample(Base):
@@ -40,8 +39,8 @@ class Sample(Base):
 
 
     def __repr__(self):
-        return f"Sample('{self.sample_id}', '{self.sample_name}', " \
-               f"'{self.sample_type}')"
+        return f"Sample('{self.sample_name}', '{self.sample_type}', " \
+               f"'{self.sample_description}')"
 
 
 class Result(Base):
@@ -50,12 +49,12 @@ class Result(Base):
     # Here we define columns for the table results
     result_id = Column(Integer, primary_key=True)
     sample_id = Column(Integer, ForeignKey('samples.sample_id'))
-    metrics = Column(JSONB)
+    metrics = Column(JSONB, nullable=False)
     sample = relationship("Sample", back_populates="results")
 
 
     def __repr__(self):
-        return f"Result('{self.result_id}', '{self.sample_id}', '{self.metrics}'"
+        return f"Result('{self.result_id}', '{self.sample_id}', '{self.metrics}')"
 
 
 @click.command()
