@@ -1,14 +1,73 @@
 import click
 import json
+import sys
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from .db_create import Analysis, Base, Result, Sample
 
 
+def create_analysis(json_file):
+    '''Create an instance of Analysis from a json metadata file.
+
+    Args:
+        json_file (Union[str, Path]): path to the metadata json file.
+
+    Returns (:obj:`Analysis`): analysis object which can be inserted
+        into the database with the SQLAlchemy ORM.
+    '''
+    with open(json_file) as of:
+        json_data = json.load(of)
+
+    json_data = json_data['Analysis']
+    field_names = ['analysis_name', 'date', 'department', 'analyst']
+
+    analysis_data = {}
+    for field in field_names:
+        if field in json_data:
+            analysis_data[field] = json_data[field]
+        else:
+            # log warning
+            pass
+
+    return Analysis(**analysis_data)
+
+
+def create_samples(json_file, analysis_obj):
+    '''Create a list of Sample instances from a json metadata file.
+
+    Args:
+        json_file (Union[str, Path]): path to the metadata json file.
+        analysis_obj (:obj:`Analysis`): analysis object to be used by
+            SQLAlchemy for foreign key association with samples.
+
+    Returns (List[:obj:`Sample`]): list of sample objects which
+        can be inserted into the database with the SQLAlchemy ORM.
+    '''
+    with open(json_file) as of:
+        json_data = json.load(of)
+
+    json_data = json_data['Samples']
+    field_names = ['sample_name', 'sample_type', 'sample_description']
+
+    samples_list = []
+    for sample in json_data:
+        sample_data = {}
+        for field in field_names:
+            if field in sample:
+                sample_data[field] = sample[field]
+            else:
+                # log warning
+                pass
+        sample_data['analysis'] = analysis_obj  # required for sample:analysis relationship
+        samples_list.append(Sample(**sample_data))
+
+    return samples_list
+
+
 @click.command()
-@click.argument('metadata_json')
-@click.argument('results_csv')
+@click.argument('metadata_json', type=click.Path(exists=True, dir_okay=False))
+@click.argument('results_csv', type=click.Path(exists=True, dir_okay=False))
 @click.argument('db_name')
 @click.option('-a', '--ip-address', default='127.0.0.1', show_default=True,
               help='the ip address of the postgresql server to bind to.')
@@ -63,30 +122,21 @@ def main(metadata_json, results_csv, db_name, ip_address, port):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    with open(metadata_json) as of:
-        json_data = json.load(of)
+    try:
+        analysis = create_analysis(metadata_json)
+    except Exception as e:
+        click.echo(e)
+        raise
+    else:
+        session.add(analysis)
 
-    analysis_data = {}
-    for field in ['analysis_name', 'date', 'department', 'analyst']:
-        if field in json_data['Analysis']:
-            analysis_data[field] = json_data['Analysis'][field]
-        else:
-            # log warning
-            pass
-    analysis = Analysis(**analysis_data)
-    session.add(analysis)
-
-    for sample in json_data['Samples']:
-        sample_data = {}
-        for field in ['sample_name', 'sample_type', 'sample_description']:
-            if field in sample:
-                sample_data[field] = sample[field]
-            else:
-                # log warning
-                pass
-        sample_data['analysis'] = analysis  # required for setting up relationship between analysis, sample
-        sample = Sample(**sample_data)
-        session.add(sample)
+    try:
+        samples = create_samples(metadata_json, analysis)
+    except Exception as e:
+        click.echo(e)
+        raise
+    else:
+        session.add(*samples)
 
     # # Insert an analysis in the analyses table
     # new_analysis = Analysis(analysis_name='MSQ100', department='QC', analyst='DMT')
