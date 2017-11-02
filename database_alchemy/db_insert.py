@@ -1,5 +1,6 @@
 import click
 import json
+import pandas as pd
 import sys
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -7,25 +8,21 @@ from sqlalchemy.orm import sessionmaker
 from .db_create import Analysis, Base, Result, Sample
 
 
-def create_analysis(json_file):
-    '''Create an instance of Analysis from a json metadata file.
+def create_analysis(metadata):
+    '''Create an instance of Analysis from an analysis metadata dict.
 
     Args:
-        json_file (Union[str, Path]): path to the metadata json file.
+        metadata (dict): dictionary containing the Analysis metadata.
 
     Returns (:obj:`Analysis`): analysis object which can be inserted
         into the database with the SQLAlchemy ORM.
     '''
-    with open(json_file) as of:
-        json_data = json.load(of)
-
-    json_data = json_data['Analysis']
     field_names = ['analysis_name', 'date', 'department', 'analyst']
 
     analysis_data = {}
     for field in field_names:
-        if field in json_data:
-            analysis_data[field] = json_data[field]
+        if field in metadata:
+            analysis_data[field] = metadata[field]
         else:
             # log warning
             pass
@@ -33,36 +30,48 @@ def create_analysis(json_file):
     return Analysis(**analysis_data)
 
 
-def create_samples(json_file, analysis_obj):
-    '''Create a list of Sample instances from a json metadata file.
+def create_sample(metadata, analysis_obj):
+    '''Create an instance of Sample from a sample metadata dict.
 
     Args:
-        json_file (Union[str, Path]): path to the metadata json file.
+        metadata (dict): dictionary containing the Sample metadata.
         analysis_obj (:obj:`Analysis`): analysis object to be used by
-            SQLAlchemy for foreign key association with samples.
+            SQLAlchemy for foreign key association with sample.
 
-    Returns (List[:obj:`Sample`]): list of sample objects which
-        can be inserted into the database with the SQLAlchemy ORM.
+    Returns (:obj:`Sample`): sample object which can be inserted
+        into the database with the SQLAlchemy ORM.
     '''
-    with open(json_file) as of:
-        json_data = json.load(of)
-
-    json_data = json_data['Samples']
     field_names = ['sample_name', 'sample_type', 'sample_description']
 
-    samples_list = []
-    for sample in json_data:
-        sample_data = {}
-        for field in field_names:
-            if field in sample:
-                sample_data[field] = sample[field]
-            else:
-                # log warning
-                pass
-        sample_data['analysis'] = analysis_obj  # required for sample:analysis relationship
-        samples_list.append(Sample(**sample_data))
+    sample_data = {}
+    for field in field_names:
+        if field in metadata:
+            sample_data[field] = metadata[field]
+        else:
+            # log warning
+            pass
+    sample_data['analysis'] = analysis_obj  # required for sample:analysis relationship
 
-    return samples_list
+    return Sample(**sample_data)
+
+
+def create_result(csv_path, sample_obj):
+    '''Create an instance of Result from a results csv file.
+
+    Args:
+        csv_path (Union[str, Path]): path to the results CSV file.
+        sample_obj (:obj: `Sample`): sample object to be used by
+            SQLAlchemy for foreign key association with result.
+
+    Returns: (:obj:`Result`): result object which can be inserted
+        into the database with the SQLAlchemy ORM.
+    '''
+    results_df = pd.read_csv(csv_path)
+    results_df = results_df.loc[results_df['sample_name'] == sample_obj.sample_name]
+    results_df = results_df.drop('sample_name', axis=1)
+    metrics = results_df.to_json(orient='records', lines=True)  # --> '{'met1': 2, 'met2': 4, 'met3': 6}'
+
+    return Result(metrics=metrics, sample=sample_obj)
 
 
 @click.command()
@@ -122,37 +131,25 @@ def main(metadata_json, results_csv, db_name, ip_address, port):
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    try:
-        analysis = create_analysis(metadata_json)
-    except Exception as e:
-        click.echo(e)
-        raise
-    else:
-        session.add(analysis)
+    with open(metadata_json) as of:
+        metadata_json = json.load(of)
 
     try:
-        samples = create_samples(metadata_json, analysis)
+        new_analysis = create_analysis(metadata_json['Analysis'])
     except Exception as e:
-        click.echo(e)
+        # log warning or crash (TBD)
         raise
     else:
-        session.add(*samples)
+        session.add(new_analysis)
 
-    # # Insert an analysis in the analyses table
-    # new_analysis = Analysis(analysis_name='MSQ100', department='QC', analyst='DMT')
-    # session.add(new_analysis)
-    #
-    # # Insert two samples in the samples table
-    # sample_1 = Sample(sample_name='TEST1', sample_type='TEST', analysis=new_analysis)
-    # sample_2 = Sample(sample_name='REF1', sample_type='REFERENCE', analysis=new_analysis)
-    # session.add(sample_1, sample_2)
-    #
-    # # Insert two result sets, one for each sample
-    # metrics_1 = {'first_name': 'Guido', 'second_name': 'Rossum', 'titles': ['BDFL', 'Developer']}
-    # metrics_2 = {'first_name': 'Davis', 'second_name': 'Todt', 'titles': ['MR', 'Developer']}
-    #
-    # result_1 = Result(metrics=metrics_1, sample=sample_1)
-    # result_2 = Result(metrics=metrics_2, sample=sample_2)
-    # session.add(result_1, result_2)
+    for sample in metadata_json['Samples']:
+        try:
+            new_sample = create_sample(sample, new_analysis)
+            new_result = create_result(results_csv, new_sample)
+        except Exception as e:
+            # log warning or crash (TBD)
+            raise
+        else:
+            session.add(new_sample, new_result)
 
     session.commit()
