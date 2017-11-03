@@ -1,6 +1,6 @@
 import click
 from sqlalchemy import Column, ForeignKey, create_engine
-from sqlalchemy import Integer, String, DateTime, func
+from sqlalchemy import Integer, String, Date, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -14,15 +14,15 @@ class Analysis(Base):
     # Declaration of columns for the table analyses
     analysis_id = Column(Integer, primary_key=True)
     analysis_name = Column(String(50), nullable=False)
-    date = Column(DateTime, default=func.now())
+    date = Column(Date, default=func.now())
     department = Column(String(20), nullable=False)
     analyst = Column(String, nullable=False)
     samples = relationship("Sample", back_populates="analysis")
 
 
     def __repr__(self):
-        return f"Analysis('{self.analysis_name}', '{self.date}', " \
-               f"'{self.department}', '{self.analyst}')"
+        return f"Analysis(analysis_id: {self.analysis_id}, analysis_name: '{self.analysis_name}', " \
+               f"date: '{self.date}', department: '{self.department}', analyst: '{self.analyst}')"
 
 
 class Sample(Base):
@@ -39,8 +39,8 @@ class Sample(Base):
 
 
     def __repr__(self):
-        return f"Sample('{self.sample_name}', '{self.sample_type}', " \
-               f"'{self.sample_description}')"
+        return f"Sample(sample_id: {self.sample_id}, sample_name: '{self.sample_name}', " \
+               f"sample_type: '{self.sample_type}', sample_description: '{self.sample_description}')"
 
 
 class Result(Base):
@@ -54,7 +54,8 @@ class Result(Base):
 
 
     def __repr__(self):
-        return f"Result('{self.result_id}', '{self.sample_id}', '{self.metrics}')"
+        return f"Result(result_id: {self.result_id}, sample_id: {self.sample_id}, " \
+               f"metrics: '{self.metrics}')"
 
 
 @click.command()
@@ -74,7 +75,7 @@ def main(db_name, ip_address, port):
       ---------+---------------+--------------
       Analyses:\tanalysis_id\t(Integer, PK)
                \tanalysis_name\t(String)
-               \tdate\t\t(DateTime)
+               \tdate\t\t(Date)
                \tdepartment\t(String)
                \tanalyst\t\t(String)
     \b

@@ -28,6 +28,7 @@ setuptools.setup(
         'console_scripts': [
             'db-create = database_alchemy.db_create:main',
             'db-insert = database_alchemy.db_insert:main',
+            'db-query = database_alchemy.db_query:main',
         ],
     },
 )

@@ -1,7 +1,7 @@
-import click
 import json
+
+import click
 import pandas as pd
-import sys
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -70,6 +70,7 @@ def create_result(csv_path, sample_obj):
     results_df = results_df.loc[results_df['sample_name'] == sample_obj.sample_name]
     results_df = results_df.drop('sample_name', axis=1)
     metrics = results_df.to_json(orient='records', lines=True)  # --> '{'met1': 2, 'met2': 4, 'met3': 6}'
+    metrics = json.loads(metrics)  # --> {'met1': 2, 'met2': 4, 'met3': 6}
 
     return Result(metrics=metrics, sample=sample_obj)
 

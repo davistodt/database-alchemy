@@ -1,5 +1,6 @@
-# database-alchemy
-Learning databases using sqlalchemy, sqlite3 and limbic for unknown reasons.
-Original SQLAlchemy tutorial can be found at http://pythoncentral.io/introductory-tutorial-python-sqlalchemy/.
+# Database Alchemy
+Learning databases with SQLAlchemy, PostgreSQL and Alembic.
 
-Great tool for veiwing postgresql database: https://github.com/sqlectron/sqlectron-gui
+# Learning Resources
+* Original SQLAlchemy tutorial can be found at: http://pythoncentral.io/introductory-tutorial-python-sqlalchemy/.
+* Great open source tool for interacting with PostgreSQL database: https://github.com/sqlectron/sqlectron-gui.
