@@ -1,0 +1,20 @@
+{
+  "Analysis": {
+    "analysis_name": "Troubleshoot drop out rates",
+    "date": "2017-09-20",
+    "department": "IT",
+    "analyst": "Guido van Rossum"
+  },
+  "Samples": [
+    {
+      "sample_name": "sample01",
+      "sample_type": "Reference",
+      "sample_description": "NA"
+    },
+    {
+      "sample_name": "sample02",
+      "sample_type": "Test",
+      "sample_description": "NA"
+    }
+  ]
+}
